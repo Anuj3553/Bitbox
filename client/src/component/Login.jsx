@@ -1,45 +1,54 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Modal, Input, Button, Typography } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { Modal, Input, Button, Spin } from "antd";
+import {
+  UserOutlined,
+  LockOutlined,
+  EyeInvisibleOutlined,
+  EyeTwoTone,
+} from "@ant-design/icons";
 import "./css/Login.css";
 import toast from "react-hot-toast";
 
-const { Title, Paragraph } = Typography;
+const host = "http://localhost:5000";
 
-const host = "http://localhost:5000"; // Your backend URL
-
-const Login = ({ mode }) => {
+const Login = ({ mode, showAlert }) => {
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [forgotPasswordModalVisible, setForgotPasswordModalVisible] =
     useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  let navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch(`${host}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: credentials.email,
-        password: credentials.password,
-      }),
-    });
-    const json = await response.json();
+    setLoading(true);
+    try {
+      const response = await fetch(`${host}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
+      });
+      const json = await response.json();
 
-    if (json.success) {
-      localStorage.setItem("token", json.authtoken);
-      props.showAlert("Logged in Successfully", "success");
-      toast.success("Login Successfully!");
-      navigate("/");
-    } else {
-      props.showAlert("Invalid Credentials", "danger");
-      toast.error("Login failed!");
+      if (json.success) {
+        localStorage.setItem("token", json.authtoken);
+        showAlert("Logged in Successfully", "success");
+        toast.success("Login Successfully!");
+        navigate("/");
+      } else {
+        showAlert("Invalid Credentials", "danger");
+        toast.error("Login failed!");
+      }
+    } catch (error) {
+      showAlert("An error occurred. Please try again later.", "danger");
+      console.error("Error during login:", error);
+    } finally {
+      setLoading(false); 
     }
   };
 
@@ -50,20 +59,20 @@ const Login = ({ mode }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: forgotEmail }), // Send email as the request body
+        body: JSON.stringify({ email: forgotEmail }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        alert(data.message || "Reset email sent successfully!");
+        toast.success(data.message || "Reset email sent successfully!");
         setForgotPasswordModalVisible(false);
-        setForgotEmail(""); // Clear the email field
+        setForgotEmail("");
       } else {
-        props.showAlert(data.message || "Failed to send reset email", "danger");
+        showAlert(data.message || "Failed to send reset email", "danger");
       }
     } catch (error) {
       console.error("Error during password reset:", error);
-      props.showAlert("An error occurred. Please try again later.", "danger");
+      showAlert("An error occurred. Please try again later.", "danger");
     }
   };
 
@@ -72,8 +81,17 @@ const Login = ({ mode }) => {
   };
 
   return (
-    <div className="wrapper">
-      <form onSubmit={handleSubmit} className="form">
+    <div
+      className="wrapper"
+      style={{
+        backgroundColor: mode === "dark" ? "black" : "white",
+        color: mode === "dark" ? "white" : "black",
+      }}
+    >
+      <form onSubmit={handleSubmit} className="form" style={{
+        backgroundColor: mode === "dark" ? "black" : "white",
+        color: mode === "dark" ? "white" : "black",
+      }}>
         <h1 className="title">Login</h1>
         <span className="title-line"></span>
         <div className="inp">
@@ -84,67 +102,51 @@ const Login = ({ mode }) => {
             name="email"
             value={credentials.email}
             onChange={onChange}
-            aria-describedby="emailHelp"
             autoComplete="on"
+            required
             style={{
               backgroundColor: mode === "dark" ? "black" : "white",
               color: mode === "dark" ? "white" : "black",
             }}
           />
         </div>
-        {/* <div className="inp">
-          <Input
-            prefix={<LockOutlined />}
-            type="password"
-            placeholder="Password"
-            name="password"
-            value={credentials.password}
-            onChange={onChange}
-            autoComplete="on"
-          />
-            style={{
-              backgroundColor: mode === 'dark' ? 'black' : 'white',
-              color: mode === 'dark' ? 'white' : 'black',
-            }}
-          />
-          <i className="fa-solid fa-lock"  style={{
-        backgroundColor: mode === 'dark' ? 'black' : 'white',
-        color: mode === 'dark' ? 'white' : 'black',
-      }}></i>
-        </div> */}
+
         <div className="inp">
-          <Input
+          <Input.Password
             prefix={<LockOutlined />}
-            type="password"
             placeholder="Password"
             name="password"
             value={credentials.password}
             onChange={onChange}
             autoComplete="on"
+            iconRender={(visible) =>
+              visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+            }
             style={{
               backgroundColor: mode === "dark" ? "black" : "white",
               color: mode === "dark" ? "white" : "black",
             }}
+            required
           />
-          <i
-            className="fa-solid fa-lock"
-            style={{
-              backgroundColor: mode === "dark" ? "black" : "white",
-              color: mode === "dark" ? "white" : "black",
-            }}
-          ></i>
         </div>
-        <Button className="submit" type="submit">
-          Login
+
+        <Button className="submit" type="submit" disabled={loading}>
+          {loading ? <Spin size="small" /> : "Login"}
         </Button>
-        <p className="footer">
-          Don't have an account?{" "}
+
+        <p className="footer" style={{
+        backgroundColor: mode === "dark" ? "black" : "white",
+        color: mode === "dark" ? "white" : "black",
+      }}>
+          Don&apos;t have an account?
           <Link className="link" to="/Signup">
+            {" "}
             Sign Up
           </Link>
         </p>
+
         <Button
-          style={{ backgroundColor: "#6366f1" }}
+          style={{ backgroundColor: "#6366f1", color: "#FFFFFF" }}
           onClick={() => setForgotPasswordModalVisible(true)}
           className="mt-3"
         >
@@ -152,24 +154,29 @@ const Login = ({ mode }) => {
         </Button>
       </form>
 
-      <div className="banner">
-        <h1 className="wel_text">
+      <div className="banner" >
+        <h1 className="wel_text" style={{
+        
+        color: mode === "dark" ? "black" : "white",
+      }}>
           WELCOME
           <br />
           BACK!
         </h1>
-        <p className="para">
+        <p className="para" style={{
+        
+        color: mode === "dark" ? "black" : "white",
+      }}>
           Please Sign In here
           <br />
           with your real info
         </p>
       </div>
 
-      {/* Antd Modal for Forgot Password */}
       <Modal
         title="Reset Password"
         visible={forgotPasswordModalVisible}
-        onOk={handleForgotPassword} // Call handleForgotPassword on submit
+        onOk={handleForgotPassword}
         onCancel={() => setForgotPasswordModalVisible(false)}
         okText="Submit"
         okButtonProps={{
@@ -198,6 +205,7 @@ const Login = ({ mode }) => {
 
 Login.propTypes = {
   showAlert: PropTypes.func.isRequired,
+  mode: PropTypes.string.isRequired,
 };
 
 export default Login;
